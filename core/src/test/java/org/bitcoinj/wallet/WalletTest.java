@@ -1916,7 +1916,7 @@ public class WalletTest extends TestWithWallet {
         request15.feePerKb = Transaction.DEFAULT_TX_FEE;
         request15.ensureMinRequiredFee = true;
         wallet.completeTx(request15);
-        assertEquals(Coin.valueOf(101200), request15.tx.getFee());
+        assertEquals(Coin.valueOf(20240), request15.tx.getFee());
         Transaction spend15 = request15.tx;
         assertEquals(31, spend15.getOutputs().size());
         // We optimize for priority, so the output selected should be the largest one
@@ -1947,7 +1947,7 @@ public class WalletTest extends TestWithWallet {
         request17.feePerKb = Transaction.DEFAULT_TX_FEE;
         request17.ensureMinRequiredFee = true;
         wallet.completeTx(request17);
-        assertEquals(Coin.valueOf(81900), request17.tx.getFee());
+        assertEquals(Coin.valueOf(16380), request17.tx.getFee());
         assertEquals(1, request17.tx.getInputs().size());
         // Calculate its max length to make sure it is indeed 999
         Transaction spend17 = request17.tx;
@@ -1965,7 +1965,7 @@ public class WalletTest extends TestWithWallet {
         request18.feePerKb = Transaction.DEFAULT_TX_FEE;
         request18.ensureMinRequiredFee = true;
         wallet.completeTx(request18);
-        assertEquals(Coin.valueOf(82100), request18.tx.getFee());
+        assertEquals(Coin.valueOf(16420), request18.tx.getFee());
         assertEquals(1, request18.tx.getInputs().size());
         // Calculate its max length to make sure it is indeed 1001
         Transaction spend18 = request18.tx;
@@ -1992,7 +1992,7 @@ public class WalletTest extends TestWithWallet {
         request19.feePerKb = Transaction.DEFAULT_TX_FEE;
         request19.shuffleOutputs = false;
         wallet.completeTx(request19);
-        assertEquals(Coin.valueOf(322300), request19.tx.getFee());
+        assertEquals(Coin.valueOf(64460), request19.tx.getFee());
         assertEquals(2, request19.tx.getInputs().size());
         assertEquals(COIN, request19.tx.getInput(0).getValue());
         assertEquals(CENT, request19.tx.getInput(1).getValue());
@@ -2013,7 +2013,7 @@ public class WalletTest extends TestWithWallet {
         request20.feePerKb = Transaction.DEFAULT_TX_FEE;
         wallet.completeTx(request20);
         // 4kb tx.
-        assertEquals(Coin.valueOf(322300), request20.tx.getFee());
+        assertEquals(Coin.valueOf(64460), request20.tx.getFee());
         assertEquals(2, request20.tx.getInputs().size());
         assertEquals(COIN, request20.tx.getInput(0).getValue());
         assertEquals(CENT, request20.tx.getInput(1).getValue());
@@ -2051,7 +2051,7 @@ public class WalletTest extends TestWithWallet {
         request25.feePerKb = Transaction.DEFAULT_TX_FEE;
         request25.shuffleOutputs = false;
         wallet.completeTx(request25);
-        assertEquals(Coin.valueOf(235500), request25.tx.getFee());
+        assertEquals(Coin.valueOf(47100), request25.tx.getFee());
         assertEquals(2, request25.tx.getInputs().size());
         assertEquals(COIN, request25.tx.getInput(0).getValue());
         assertEquals(CENT, request25.tx.getInput(1).getValue());
@@ -2096,7 +2096,7 @@ public class WalletTest extends TestWithWallet {
         SendRequest request = SendRequest.to(OTHER_ADDRESS, CENT);
         request.feePerKb = Transaction.DEFAULT_TX_FEE;
         wallet.completeTx(request);
-        assertEquals(Coin.valueOf(11300), request.tx.getFee());
+        assertEquals(Coin.valueOf(2260), request.tx.getFee());
     }
 
     @Test
@@ -2107,7 +2107,7 @@ public class WalletTest extends TestWithWallet {
         SendRequest req = SendRequest.to(myAddress, Coin.CENT);
         req.feePerKb = fee;
         wallet.completeTx(req);
-        assertEquals(Coin.valueOf(11300).divide(feeFactor), req.tx.getFee());
+        assertEquals(Coin.valueOf(2260).divide(feeFactor), req.tx.getFee());
         wallet.commitTx(req.tx);
         SendRequest emptyReq = SendRequest.emptyWallet(myAddress);
         emptyReq.feePerKb = fee;
@@ -2127,14 +2127,14 @@ public class WalletTest extends TestWithWallet {
         SendRequest req = SendRequest.to(myAddress, Coin.CENT);
         req.feePerKb = fee;
         wallet.completeTx(req);
-        assertEquals(Coin.valueOf(11300).multiply(feeFactor), req.tx.getFee());
+        assertEquals(Coin.valueOf(2260).multiply(feeFactor), req.tx.getFee());
         wallet.commitTx(req.tx);
         SendRequest emptyReq = SendRequest.emptyWallet(myAddress);
         emptyReq.feePerKb = fee;
         emptyReq.emptyWallet = true;
         emptyReq.coinSelector = AllowUnconfirmedCoinSelector.get();
         wallet.completeTx(emptyReq);
-        assertEquals(Coin.valueOf(123000), emptyReq.tx.getFee());
+        assertEquals(Coin.valueOf(24600), emptyReq.tx.getFee());
         wallet.commitTx(emptyReq.tx);
     }
 
