@@ -238,7 +238,7 @@ public class BloomFilter extends Message {
 
     /** Inserts the given key and equivalent hashed form (for the address). */
     public synchronized void insert(ECKey key) {
-        //insert(key.getPubKey());
+        insert(key.getPubKey());
         insert(key.getPubKeyHash());
     }
 
