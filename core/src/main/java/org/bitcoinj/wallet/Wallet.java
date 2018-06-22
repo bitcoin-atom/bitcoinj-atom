@@ -4381,12 +4381,7 @@ public class Wallet extends BaseTaggableObject
     public boolean isRequiringUpdateAllBloomFilter() {
         // This is typically called by the PeerGroup, in which case it will have already explicitly taken the lock
         // before calling, but because this is public API we must still lock again regardless.
-        keyChainGroupLock.lock();
-        try {
-            return !watchedScripts.isEmpty();
-        } finally {
-            keyChainGroupLock.unlock();
-        }
+        return true;
     }
 
     /**
@@ -4423,7 +4418,7 @@ public class Wallet extends BaseTaggableObject
                     // Only add long (at least 64 bit) data to the bloom filter.
                     // If any long constants become popular in scripts, we will need logic
                     // here to exclude them.
-                    if (!chunk.isOpCode() && null != chunk.data && chunk.data.length >= MINIMUM_BLOOM_DATA_LENGTH) {
+                    if (!chunk.isOpCode() && (null != chunk.data) && chunk.data.length >= MINIMUM_BLOOM_DATA_LENGTH) {
                         filter.insert(chunk.data);
                     }
                 }
@@ -4439,7 +4434,8 @@ public class Wallet extends BaseTaggableObject
     // Returns true if the output is one that won't be selected by a data element matching in the scriptSig.
     private boolean isTxOutputBloomFilterable(TransactionOutput out) {
         Script script = out.getScriptPubKey();
-        boolean isScriptTypeSupported = ScriptPattern.isPayToWitnessPubKeyHash(script) || ScriptPattern.isPayToPubKey(script) || ScriptPattern.isPayToScriptHash(script); // done bloom
+        boolean isScriptTypeSupported = ScriptPattern.isPayToWitnessPubKeyHash(script) || ScriptPattern.isPayToWitnessScriptHash(script)
+                || ScriptPattern.isPayToPubKey(script) || ScriptPattern.isPayToScriptHash(script);
         return (isScriptTypeSupported && myUnspents.contains(out)) || watchedScripts.contains(script);
     }
 
