@@ -187,7 +187,6 @@ public class WalletTest extends TestWithWallet {
         // Consider the new pending as risky and remove it from the wallet
         wallet.setRiskAnalyzer(new TestRiskAnalysis.Analyzer(t));
 
-        wallet.cleanup();
         assertTrue(wallet.isConsistent());
         assertEquals("Wrong number of PENDING", 2, wallet.getPoolSize(WalletTransaction.Pool.PENDING));
         assertEquals("Wrong number of UNSPENT", 0, wallet.getPoolSize(WalletTransaction.Pool.UNSPENT));
@@ -216,7 +215,6 @@ public class WalletTest extends TestWithWallet {
         // Consider the new pending as risky and try to remove it from the wallet
         wallet.setRiskAnalyzer(new TestRiskAnalysis.Analyzer(t));
 
-        wallet.cleanup();
         assertTrue(wallet.isConsistent());
 
         // The removal should have failed
@@ -1435,7 +1433,7 @@ public class WalletTest extends TestWithWallet {
 
     @Test
     public void watchingScriptsBloomFilter() throws Exception {
-        assertFalse(wallet.isRequiringUpdateAllBloomFilter());
+        assertTrue(wallet.isRequiringUpdateAllBloomFilter());
 
         Address watchedAddress = SegwitAddress.fromKey(UNITTEST, new ECKey());
         Transaction t1 = createFakeTx(UNITTEST, CENT, watchedAddress);
@@ -1472,7 +1470,7 @@ public class WalletTest extends TestWithWallet {
         for (Address addr : addressesForRemoval)
             assertFalse(wallet.isAddressWatched(addr));
 
-        assertFalse(wallet.isRequiringUpdateAllBloomFilter());
+        assertTrue(wallet.isRequiringUpdateAllBloomFilter());
     }
 
     @Test
@@ -1481,7 +1479,7 @@ public class WalletTest extends TestWithWallet {
         wallet.addWatchedAddress(watchedAddress);
         wallet.removeWatchedAddress(watchedAddress);
         assertFalse(wallet.isAddressWatched(watchedAddress));
-        assertFalse(wallet.isRequiringUpdateAllBloomFilter());
+        assertTrue(wallet.isRequiringUpdateAllBloomFilter());
     }
 
     @Test
