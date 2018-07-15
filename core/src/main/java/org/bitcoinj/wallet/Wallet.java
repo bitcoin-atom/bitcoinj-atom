@@ -3698,19 +3698,6 @@ public class Wallet extends BaseTaggableObject
         req.completed = true;
     }
 
-    public void maybeAddOpReturnPubKeyHash(SendRequest req) throws NullPointerException, ScriptException, ECKey.MissingPrivateKeyException {
-        if (req.emptyWallet) {
-            RedeemData rd = req.tx.getInput(0).getConnectedRedeemData(this);
-
-            ECKey key;
-            if ((key = rd.getFullKey()) == null) {
-                throw new ECKey.MissingPrivateKeyException();
-            }
-
-            req.tx.addOutput(Coin.ZERO, ScriptBuilder.createOpReturnScript(key.getPubKeyHash()));
-        }
-    }
-
     /**
      * <p>Given a send request containing transaction, attempts to sign it's inputs. This method expects transaction
      * to have all necessary inputs connected or they will be ignored.</p>
