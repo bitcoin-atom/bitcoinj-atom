@@ -31,7 +31,6 @@ import static org.junit.Assert.*;
 public class DefaultCoinSelectorTest extends TestWithWallet {
     private static final NetworkParameters UNITTEST = UnitTestParams.get();
     private static final NetworkParameters REGTEST = RegTestParams.get();
-    private DefaultCoinSelector s1 = new DefaultCoinSelector();
 
     @Before
     @Override
@@ -68,50 +67,28 @@ public class DefaultCoinSelectorTest extends TestWithWallet {
     }
 
     @Test
-    public void depthOrdering() throws Exception {
+    public void smallestValueOrdering() throws Exception {
         // Send two transactions in two blocks on top of each other.
-        Transaction t1 = checkNotNull(sendMoneyToWallet(AbstractBlockChain.NewBlockType.BEST_CHAIN, COIN));
-        Transaction t2 = checkNotNull(sendMoneyToWallet(AbstractBlockChain.NewBlockType.BEST_CHAIN, COIN));
+        Transaction t1 = checkNotNull(sendMoneyToWallet(AbstractBlockChain.NewBlockType.BEST_CHAIN, COIN.divide(2)));
+        Transaction t2 = checkNotNull(sendMoneyToWallet(AbstractBlockChain.NewBlockType.BEST_CHAIN, COIN.divide(4)));
+        Transaction t3 = checkNotNull(sendMoneyToWallet(AbstractBlockChain.NewBlockType.BEST_CHAIN, COIN.divide(5)));
 
         // Check we selected just the oldest one.
         DefaultCoinSelector selector = new DefaultCoinSelector();
-        CoinSelection selection = selector.select(COIN, wallet.calculateAllSpendCandidates());
+        CoinSelection selection = selector.select(COIN.divide(10).multiply(9), wallet.calculateAllSpendCandidates());
         assertTrue(selection.gathered.contains(t1.getOutputs().get(0)));
-        assertEquals(COIN, selection.valueGathered);
+        assertEquals(COIN.divide(2).add(COIN.divide(4)).add(COIN.divide(5)), selection.valueGathered);
 
         // Check we ordered them correctly (by depth).
         ArrayList<TransactionOutput> candidates = new ArrayList<>();
         candidates.add(t2.getOutput(0));
         candidates.add(t1.getOutput(0));
-
-        s1.sortOutputs(candidates);
-
-        assertEquals(t1.getOutput(0), candidates.get(0));
-        assertEquals(t2.getOutput(0), candidates.get(1));
-    }
-
-    @Test
-    public void coinAgeOrdering() throws Exception {
-        // Send three transactions in four blocks on top of each other. Coin age of t1 is 1*4=4, coin age of t2 = 2*2=4
-        // and t3=0.01.
-        Transaction t1 = checkNotNull(sendMoneyToWallet(AbstractBlockChain.NewBlockType.BEST_CHAIN, COIN));
-        // Padding block.
-        wallet.notifyNewBestBlock(FakeTxBuilder.createFakeBlock(blockStore, Block.BLOCK_HEIGHT_GENESIS).storedBlock);
-        final Coin TWO_COINS = COIN.multiply(2);
-        Transaction t2 = checkNotNull(sendMoneyToWallet(AbstractBlockChain.NewBlockType.BEST_CHAIN, TWO_COINS));
-        Transaction t3 = checkNotNull(sendMoneyToWallet(AbstractBlockChain.NewBlockType.BEST_CHAIN, CENT));
-
-        // Should be ordered t2, t1, t3.
-        ArrayList<TransactionOutput> candidates = new ArrayList<>();
         candidates.add(t3.getOutput(0));
-        candidates.add(t2.getOutput(0));
-        candidates.add(t1.getOutput(0));
+        DefaultCoinSelector.sortOutputs(candidates);
 
-        s1.sortOutputs(candidates);
-
-        assertEquals(t2.getOutput(0), candidates.get(0));
-        assertEquals(t1.getOutput(0), candidates.get(1));
-        assertEquals(t3.getOutput(0), candidates.get(2));
+        assertEquals(t3.getOutput(0), candidates.get(0));
+        assertEquals(t2.getOutput(0), candidates.get(1));
+        assertEquals(t1.getOutput(0), candidates.get(2));
     }
 
     @Test

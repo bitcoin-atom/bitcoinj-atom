@@ -59,20 +59,13 @@ public class DefaultCoinSelector implements CoinSelector {
         return new CoinSelection(Coin.valueOf(total), selected);
     }
 
-    public void sortOutputs(ArrayList<TransactionOutput> outputs) {
+    @VisibleForTesting static void sortOutputs(ArrayList<TransactionOutput> outputs) {
         Collections.sort(outputs, new Comparator<TransactionOutput>() {
             @Override
             public int compare(TransactionOutput a, TransactionOutput b) {
-                int depth1 = a.getParentTransactionDepthInBlocks();
-                int depth2 = b.getParentTransactionDepthInBlocks();
                 Coin aValue = a.getValue();
                 Coin bValue = b.getValue();
-                BigInteger aCoinDepth = BigInteger.valueOf(aValue.value).multiply(BigInteger.valueOf(depth1));
-                BigInteger bCoinDepth = BigInteger.valueOf(bValue.value).multiply(BigInteger.valueOf(depth2));
-                int c1 = bCoinDepth.compareTo(aCoinDepth);
-                if (c1 != 0) return c1;
-                // The "coin*days" destroyed are equal, sort by value alone to get the lowest transaction size.
-                int c2 = bValue.compareTo(aValue);
+                int c2 = aValue.compareTo(bValue);
                 if (c2 != 0) return c2;
                 // They are entirely equivalent (possibly pending) so sort by hash to ensure a total ordering.
                 BigInteger aHash = a.getParentTransactionHash().toBigInteger();
