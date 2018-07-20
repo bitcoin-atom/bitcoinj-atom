@@ -59,7 +59,7 @@ public class DefaultCoinSelector implements CoinSelector {
         return new CoinSelection(Coin.valueOf(total), selected);
     }
 
-    @VisibleForTesting static void sortOutputs(ArrayList<TransactionOutput> outputs) {
+    public void sortOutputs(ArrayList<TransactionOutput> outputs) {
         Collections.sort(outputs, new Comparator<TransactionOutput>() {
             @Override
             public int compare(TransactionOutput a, TransactionOutput b) {

@@ -31,6 +31,7 @@ import static org.junit.Assert.*;
 public class DefaultCoinSelectorTest extends TestWithWallet {
     private static final NetworkParameters UNITTEST = UnitTestParams.get();
     private static final NetworkParameters REGTEST = RegTestParams.get();
+    private DefaultCoinSelector s1 = new DefaultCoinSelector();
 
     @Before
     @Override
@@ -82,7 +83,9 @@ public class DefaultCoinSelectorTest extends TestWithWallet {
         ArrayList<TransactionOutput> candidates = new ArrayList<>();
         candidates.add(t2.getOutput(0));
         candidates.add(t1.getOutput(0));
-        DefaultCoinSelector.sortOutputs(candidates);
+
+        s1.sortOutputs(candidates);
+
         assertEquals(t1.getOutput(0), candidates.get(0));
         assertEquals(t2.getOutput(0), candidates.get(1));
     }
@@ -103,7 +106,9 @@ public class DefaultCoinSelectorTest extends TestWithWallet {
         candidates.add(t3.getOutput(0));
         candidates.add(t2.getOutput(0));
         candidates.add(t1.getOutput(0));
-        DefaultCoinSelector.sortOutputs(candidates);
+
+        s1.sortOutputs(candidates);
+
         assertEquals(t2.getOutput(0), candidates.get(0));
         assertEquals(t1.getOutput(0), candidates.get(1));
         assertEquals(t3.getOutput(0), candidates.get(2));
