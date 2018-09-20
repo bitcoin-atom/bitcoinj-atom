@@ -33,6 +33,7 @@ import org.bitcoinj.wallet.Wallet;
 import org.bitcoinj.wallet.listeners.KeyChainEventListener;
 import org.bitcoinj.wallet.listeners.ScriptsChangeEventListener;
 import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
+import org.bitcoinj.wallet.listeners.WalletCoinsSentEventListener;
 import org.slf4j.*;
 
 import javax.annotation.*;
@@ -171,6 +172,14 @@ public class PeerGroup implements TransactionBroadcaster {
         @Override public void onKeysAdded(List<ECKey> keys) {
             recalculateFastCatchupAndFilter(FilterRecalculateMode.SEND_IF_CHANGED);
         }
+    };
+
+    private final WalletCoinsSentEventListener walletCoinsSentEventListener = new WalletCoinsSentEventListener() {
+        @Override
+        public void onCoinsSent(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
+            recalculateFastCatchupAndFilter(FilterRecalculateMode.SEND_IF_CHANGED);
+        }
+
     };
 
     private final WalletCoinsReceivedEventListener walletCoinsReceivedEventListener = new WalletCoinsReceivedEventListener() {
@@ -1153,8 +1162,9 @@ public class PeerGroup implements TransactionBroadcaster {
             wallets.add(wallet);
             wallet.setTransactionBroadcaster(this);
             wallet.addCoinsReceivedEventListener(Threading.SAME_THREAD, walletCoinsReceivedEventListener);
-            wallet.addKeyChainEventListener(Threading.SAME_THREAD, walletKeyEventListener);
+            wallet.addCoinsSentEventListener(Threading.SAME_THREAD, walletCoinsSentEventListener);
             wallet.addScriptChangeEventListener(Threading.SAME_THREAD, walletScriptEventListener);
+            wallet.addKeyChainEventListener(Threading.SAME_THREAD, walletKeyEventListener);
             addPeerFilterProvider(wallet);
             for (Peer peer : peers) {
                 peer.addWallet(wallet);
