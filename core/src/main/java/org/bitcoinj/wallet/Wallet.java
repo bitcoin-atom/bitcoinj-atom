@@ -4304,18 +4304,22 @@ public class Wallet extends BaseTaggableObject
         beginBloomFilterCalculation();
         try {
             BloomFilter filter = keyChainGroup.getBloomFilter(size, falsePositiveRate, nTweak);
-            for (Script script : watchedScripts) {
-                for (ScriptChunk chunk : script.getChunks()) {
-                    // Only add long (at least 64 bit) data to the bloom filter.
-                    // If any long constants become popular in scripts, we will need logic
-                    // here to exclude them.
-                    if (!chunk.isOpCode() && (null != chunk.data) && chunk.data.length >= MINIMUM_BLOOM_DATA_LENGTH) {
+
+            for (Transaction tx : pending.values())
+                for (TransactionOutput output : tx.getOutputs())
+                    if (!output.isMine(this))
+                        for (ScriptChunk chunk : output.getScriptPubKey().getChunks())
+                            if (!chunk.isOpCode() && (null != chunk.data) && chunk.data.length >= MINIMUM_BLOOM_DATA_LENGTH)
+                                filter.insert(chunk.data);
+
+            for (Script script : watchedScripts)
+                for (ScriptChunk chunk : script.getChunks())
+                    if (!chunk.isOpCode() && (null != chunk.data) && chunk.data.length >= MINIMUM_BLOOM_DATA_LENGTH)
                         filter.insert(chunk.data);
-                    }
-                }
-            }
+
             for (TransactionOutPoint point : bloomOutPoints)
                 filter.insert(point.unsafeBitcoinSerialize());
+
             return filter;
         } finally {
             endBloomFilterCalculation();
