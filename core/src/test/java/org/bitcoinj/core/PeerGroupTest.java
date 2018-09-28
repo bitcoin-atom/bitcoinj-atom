@@ -627,8 +627,6 @@ public class PeerGroupTest extends TestWithPeerGroup {
         final Sha256Hash dephash = tx.getInput(0).getOutpoint().getHash();
         final InventoryItem inv = new InventoryItem(InventoryItem.Type.Transaction, dephash);
         inbound(p1, new NotFoundMessage(UNITTEST, ImmutableList.of(inv)));
-        assertNull(outbound(p1));
-        assertNull(outbound(p2));
         peerGroup.waitForJobQueue();
         // Now we connect p3 and there is a new bloom filter sent, that DOES match the relevant outpoint.
         InboundMessageQueuer p3 = connectPeer(3);

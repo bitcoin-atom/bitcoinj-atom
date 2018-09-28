@@ -1542,7 +1542,14 @@ public class Wallet extends BaseTaggableObject
      * it will not be considered relevant.</p>
      */
     public boolean isTransactionRelevant(Transaction tx) throws ScriptException {
-        return true;
+        lock.lock();
+        try {
+            return tx.getValueSentFromMe(this).signum() > 0 ||
+                    tx.getValueSentToMe(this).signum() > 0 ||
+                    !findDoubleSpendsAgainst(tx, transactions).isEmpty();
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
