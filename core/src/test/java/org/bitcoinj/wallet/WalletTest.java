@@ -1175,7 +1175,7 @@ public class WalletTest extends TestWithWallet {
             wallet.receivePending(irrelevant, null);
         Threading.waitForUserCode();
         assertFalse(flags[0]);
-        assertEquals(4, walletChanged[0]);
+        assertEquals(3, walletChanged[0]);
     }
 
     @Test
@@ -2351,7 +2351,7 @@ public class WalletTest extends TestWithWallet {
         wallet.receivePending(tx2, null);
         StoredBlock block2 = createFakeBlock(blockStore, Block.BLOCK_HEIGHT_GENESIS + 1, tx2).storedBlock;
         boolean notification2 = wallet.notifyTransactionIsInBlock(tx2.getHash(), block2, AbstractBlockChain.NewBlockType.BEST_CHAIN, 1);
-        assertTrue(notification2);
+        assertFalse(notification2);
     }
 
     @Test
