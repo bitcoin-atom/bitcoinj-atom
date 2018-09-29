@@ -149,7 +149,7 @@ public class Wallet extends BaseTaggableObject
     //           to the user in the UI, etc). A transaction can leave dead and move into spent/unspent if there is a
     //           re-org to a chain that doesn't include the double spend.
 
-    private final Map<Sha256Hash, Transaction> pending;
+    public final Map<Sha256Hash, Transaction> pending;
     private final Map<Sha256Hash, Transaction> unspent;
     private final Map<Sha256Hash, Transaction> spent;
     private final Map<Sha256Hash, Transaction> dead;
