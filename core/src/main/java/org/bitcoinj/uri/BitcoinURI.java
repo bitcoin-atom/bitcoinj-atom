@@ -83,6 +83,7 @@ public class BitcoinURI {
     public static final String FIELD_AMOUNT = "amount";
     public static final String FIELD_ADDRESS = "address";
     public static final String FIELD_PAYMENT_REQUEST_URL = "r";
+    public static final String FIELD_LN = "lightning";
 
     /**
      * URI for Bitcoin network. Use {@link AbstractBitcoinNetParams#BITCOIN_SCHEME} if you specifically
@@ -284,6 +285,13 @@ public class BitcoinURI {
      */
     public String getMessage() {
         return (String) parameterMap.get(FIELD_MESSAGE);
+    }
+
+    /**
+     * @return The Lightning payment request from the URI.
+     */
+    public String getLightningRequest() {
+        return (String) parameterMap.get(FIELD_LN);
     }
 
     /**

@@ -149,7 +149,7 @@ public class Wallet extends BaseTaggableObject
     //           to the user in the UI, etc). A transaction can leave dead and move into spent/unspent if there is a
     //           re-org to a chain that doesn't include the double spend.
 
-    private final Map<Sha256Hash, Transaction> pending;
+    public final Map<Sha256Hash, Transaction> pending;
     private final Map<Sha256Hash, Transaction> unspent;
     private final Map<Sha256Hash, Transaction> spent;
     private final Map<Sha256Hash, Transaction> dead;
@@ -210,8 +210,6 @@ public class Wallet extends BaseTaggableObject
     // in receive() via Transaction.setBlockAppearance(). As the BlockChain always calls notifyNewBestBlock even if
     // it sent transactions to the wallet, without this we'd double count.
     private HashSet<Sha256Hash> ignoreNextNewBlock;
-    // Whether or not to ignore pending transactions that are considered risky by the configured risk analyzer.
-    private boolean acceptRiskyTransactions;
     // Object that performs risk analysis of pending transactions. We might reject transactions that seem like
     // a high risk of being a double spending attack.
     private RiskAnalysis.Analyzer riskAnalyzer = DefaultRiskAnalysis.FACTORY;
@@ -290,14 +288,6 @@ public class Wallet extends BaseTaggableObject
         return fromWatchingKey(params, watchKey);
     }
 
-    /**
-     * Creates a wallet that tracks payments to and from the HD key hierarchy rooted by the given spending key.
-     * This wallet can also spend.
-     */
-    public static Wallet fromSpendingKey(NetworkParameters params, DeterministicKey spendKey) {
-        return new Wallet(params, new KeyChainGroup(params, spendKey, false));
-    }
-
     public Wallet(NetworkParameters params, KeyChainGroup keyChainGroup) {
         this(Context.getOrCreate(params), keyChainGroup);
     }
@@ -351,7 +341,6 @@ public class Wallet extends BaseTaggableObject
                 }
             }
         };
-        acceptRiskyTransactions = false;
     }
 
     public NetworkParameters getNetworkParameters() {
@@ -1150,40 +1139,8 @@ public class Wallet extends BaseTaggableObject
     }
 
     /**
-     * <p>Whether or not the wallet will ignore pending transactions that fail the selected
-     * {@link RiskAnalysis}. By default, if a transaction is considered risky then it won't enter the wallet
-     * and won't trigger any event listeners. If you set this property to true, then all transactions will
-     * be allowed in regardless of risk. For example, the {@link DefaultRiskAnalysis} checks for non-finality of
-     * transactions.</p>
-     *
-     * <p>Note that this property is not serialized. You have to set it each time a Wallet object is constructed,
-     * even if it's loaded from a protocol buffer.</p>
-     */
-    public void setAcceptRiskyTransactions(boolean acceptRiskyTransactions) {
-        lock.lock();
-        try {
-            this.acceptRiskyTransactions = acceptRiskyTransactions;
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
-     * See {@link Wallet#setAcceptRiskyTransactions(boolean)} for an explanation of this property.
-     */
-    public boolean isAcceptRiskyTransactions() {
-        lock.lock();
-        try {
-            return acceptRiskyTransactions;
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
      * Sets the {@link RiskAnalysis} implementation to use for deciding whether received pending transactions are risky
-     * or not. If the analyzer says a transaction is risky, by default it will be dropped. You can customize this
-     * behaviour with {@link #setAcceptRiskyTransactions(boolean)}.
+     * or not. If the analyzer says a transaction is risky, by default it will be dropped.
      */
     public void setRiskAnalyzer(RiskAnalysis.Analyzer analyzer) {
         lock.lock();
@@ -1500,12 +1457,6 @@ public class Wallet extends BaseTaggableObject
             // race conditions where receivePending may be being called in parallel.
             if (!overrideIsRelevant && !isPendingTransactionRelevant(tx))
                 return;
-            if (isTransactionRisky(tx, dependencies) && !acceptRiskyTransactions) {
-                // isTransactionRisky already logged the reason.
-                riskDropped.put(tx.getHash(), tx);
-                log.warn("There are now {} risk dropped transactions being kept in memory", riskDropped.size());
-                return;
-            }
             Coin valueSentToMe = tx.getValueSentToMe(this);
             Coin valueSentFromMe = tx.getValueSentFromMe(this);
             if (log.isInfoEnabled()) {
@@ -1529,8 +1480,7 @@ public class Wallet extends BaseTaggableObject
 
     /**
      * Given a transaction and an optional list of dependencies (recursive/flattened), returns true if the given
-     * transaction would be rejected by the analyzer, or false otherwise. The result of this call is independent
-     * of the value of {@link #isAcceptRiskyTransactions()}. Risky transactions yield a logged warning. If you
+     * transaction would be rejected by the analyzer, or false otherwise. Risky transactions yield a logged warning. If you
      * want to know the reason why a transaction is risky, create an instance of the {@link RiskAnalysis} yourself
      * using the factory returned by {@link #getRiskAnalyzer()} and use it directly.
      */
@@ -1592,7 +1542,14 @@ public class Wallet extends BaseTaggableObject
      * it will not be considered relevant.</p>
      */
     public boolean isTransactionRelevant(Transaction tx) throws ScriptException {
-        return true;
+        lock.lock();
+        try {
+            return tx.getValueSentFromMe(this).signum() > 0 ||
+                    tx.getValueSentToMe(this).signum() > 0 ||
+                    !findDoubleSpendsAgainst(tx, transactions).isEmpty();
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
@@ -2809,52 +2766,6 @@ public class Wallet extends BaseTaggableObject
         }
     }
 
-    /**
-     * Clean up the wallet. Currently, it only removes risky pending transaction from the wallet and only if their
-     * outputs have not been spent.
-     */
-    public void cleanup() {
-        lock.lock();
-        try {
-            boolean dirty = false;
-            for (Iterator<Transaction> i = pending.values().iterator(); i.hasNext();) {
-                Transaction tx = i.next();
-                if (isTransactionRisky(tx, null) && !acceptRiskyTransactions) {
-                    log.debug("Found risky transaction {} in wallet during cleanup.", tx.getHashAsString());
-                    if (!tx.isAnyOutputSpent()) {
-                        // Sync myUnspents with the change.
-                        for (TransactionInput input : tx.getInputs()) {
-                            TransactionOutput output = input.getConnectedOutput();
-                            if (output == null) continue;
-                            if (output.isMineOrWatched(this))
-                                checkState(myUnspents.add(output));
-                            input.disconnect();
-                        }
-                        for (TransactionOutput output : tx.getOutputs())
-                            myUnspents.remove(output);
-
-                        i.remove();
-                        transactions.remove(tx.getHash());
-                        dirty = true;
-                        log.info("Removed transaction {} from pending pool during cleanup.", tx.getHashAsString());
-                    } else {
-                        log.info(
-                                "Cannot remove transaction {} from pending pool during cleanup, as it's already spent partially.",
-                                tx.getHashAsString());
-                    }
-                }
-            }
-            if (dirty) {
-                isConsistentOrThrow();
-                saveLater();
-                if (log.isInfoEnabled())
-                    log.info("Estimated balance is now: {}", getBalance(BalanceType.ESTIMATED).toFriendlyString());
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
-
     EnumSet<Pool> getContainingPools(Transaction tx) {
         lock.lock();
         try {
@@ -3794,19 +3705,6 @@ public class Wallet extends BaseTaggableObject
         req.completed = true;
     }
 
-    public void maybeAddOpReturnPubKeyHash(SendRequest req) throws NullPointerException, ScriptException, ECKey.MissingPrivateKeyException {
-        if (req.emptyWallet) {
-            RedeemData rd = req.tx.getInput(0).getConnectedRedeemData(this);
-
-            ECKey key;
-            if ((key = rd.getFullKey()) == null) {
-                throw new ECKey.MissingPrivateKeyException();
-            }
-
-            req.tx.addOutput(Coin.ZERO, ScriptBuilder.createOpReturnScript(key.getPubKeyHash()));
-        }
-    }
-
     /**
      * <p>Given a send request containing transaction, attempts to sign it's inputs. This method expects transaction
      * to have all necessary inputs connected or they will be ignored.</p>
@@ -4381,12 +4279,7 @@ public class Wallet extends BaseTaggableObject
     public boolean isRequiringUpdateAllBloomFilter() {
         // This is typically called by the PeerGroup, in which case it will have already explicitly taken the lock
         // before calling, but because this is public API we must still lock again regardless.
-        keyChainGroupLock.lock();
-        try {
-            return !watchedScripts.isEmpty();
-        } finally {
-            keyChainGroupLock.unlock();
-        }
+        return true;
     }
 
     /**
@@ -4418,18 +4311,22 @@ public class Wallet extends BaseTaggableObject
         beginBloomFilterCalculation();
         try {
             BloomFilter filter = keyChainGroup.getBloomFilter(size, falsePositiveRate, nTweak);
-            for (Script script : watchedScripts) {
-                for (ScriptChunk chunk : script.getChunks()) {
-                    // Only add long (at least 64 bit) data to the bloom filter.
-                    // If any long constants become popular in scripts, we will need logic
-                    // here to exclude them.
-                    if (!chunk.isOpCode() && null != chunk.data && chunk.data.length >= MINIMUM_BLOOM_DATA_LENGTH) {
+
+            for (Transaction tx : pending.values())
+                for (TransactionOutput output : tx.getOutputs())
+                    if (!output.isMine(this))
+                        for (ScriptChunk chunk : output.getScriptPubKey().getChunks())
+                            if (!chunk.isOpCode() && (null != chunk.data) && chunk.data.length >= MINIMUM_BLOOM_DATA_LENGTH)
+                                filter.insert(chunk.data);
+
+            for (Script script : watchedScripts)
+                for (ScriptChunk chunk : script.getChunks())
+                    if (!chunk.isOpCode() && (null != chunk.data) && chunk.data.length >= MINIMUM_BLOOM_DATA_LENGTH)
                         filter.insert(chunk.data);
-                    }
-                }
-            }
+
             for (TransactionOutPoint point : bloomOutPoints)
                 filter.insert(point.unsafeBitcoinSerialize());
+
             return filter;
         } finally {
             endBloomFilterCalculation();
@@ -4439,7 +4336,8 @@ public class Wallet extends BaseTaggableObject
     // Returns true if the output is one that won't be selected by a data element matching in the scriptSig.
     private boolean isTxOutputBloomFilterable(TransactionOutput out) {
         Script script = out.getScriptPubKey();
-        boolean isScriptTypeSupported = ScriptPattern.isPayToWitnessPubKeyHash(script) || ScriptPattern.isPayToPubKey(script) || ScriptPattern.isPayToScriptHash(script); // done bloom
+        boolean isScriptTypeSupported = ScriptPattern.isPayToWitnessPubKeyHash(script) || ScriptPattern.isPayToWitnessScriptHash(script)
+                || ScriptPattern.isPayToPubKey(script) || ScriptPattern.isPayToScriptHash(script);
         return (isScriptTypeSupported && myUnspents.contains(out)) || watchedScripts.contains(script);
     }
 

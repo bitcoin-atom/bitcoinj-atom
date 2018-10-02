@@ -704,7 +704,6 @@ public class PeerTest extends TestWithNetworkConnections {
         connectWithVersion(70001, VersionMessage.NODE_NETWORK);
         Wallet wallet = new Wallet(UNITTEST);
         ECKey key = wallet.freshReceiveKey();
-        wallet.setAcceptRiskyTransactions(shouldAccept);
         peer.addWallet(wallet);
         final Transaction[] vtx = new Transaction[1];
         wallet.addCoinsReceivedEventListener(new WalletCoinsReceivedEventListener() {
