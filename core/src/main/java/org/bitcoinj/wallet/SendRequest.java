@@ -23,7 +23,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.math.BigInteger;
 import java.util.Date;
 
-import org.bitcoin.protocols.payments.Protos.PaymentDetails;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.core.Coin;
@@ -254,13 +253,6 @@ public class SendRequest {
         req.tx = new Transaction(params);
         req.tx.addOutput(value, output);
         return req;
-    }
-
-    /** Copy data from payment request. */
-    public SendRequest fromPaymentDetails(PaymentDetails paymentDetails) {
-        if (paymentDetails.hasMemo())
-            this.memo = paymentDetails.getMemo();
-        return this;
     }
 
     @Override
